@@ -1,0 +1,650 @@
+openapi: 3.0.3
+info:
+  title: Wikipedia RAG Chat API
+  description: |
+    API for querying indexed Wikipedia content through a conversational
+    interface. Submit natural language questions and receive AI-generated
+    answers based on the retrieved context from the RAG session.
+  version: 1.0.0
+  contact:
+    name: Wikipedia RAG System
+    email: support@example.com
+
+servers:
+  - url: https://api.example.com/v1
+    description: Production API Gateway
+  - url: https://dev-api.example.com/v1
+    description: Development environment
+
+tags:
+  - name: Chat Queries
+    description: Operations for querying RAG sessions
+  - name: Chat History
+    description: Operations for managing conversation history
+
+paths:
+  /chat/query:
+    post:
+      summary: Submit a query to a RAG session
+      description: |
+        Submit a natural language question to a RAG session. The system will:
+        1. Embed the query using the same model used for indexing
+        2. Retrieve the most relevant chunks from the FAISS index
+        3. Generate a response using Llama 3.2 3B with the retrieved context
+        4. Stream the response back to the client
+      operationId: submitChatQuery
+      tags:
+        - Chat Queries
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - session_id
+                - query_text
+              properties:
+                session_id:
+                  type: string
+                  format: uuid
+                  description: RAG session to query
+                  example: "550e8400-e29b-41d4-a716-446655440000"
+                query_text:
+                  type: string
+                  description: User's natural language question
+                  minLength: 3
+                  maxLength: 1000
+                  example: "What is Python's main design philosophy?"
+                options:
+                  type: object
+                  description: Optional query parameters
+                  properties:
+                    top_k:
+                      type: integer
+                      description: Number of chunks to retrieve
+                      default: 3
+                      minimum: 1
+                      maximum: 10
+                      example: 3
+                    temperature:
+                      type: number
+                      format: float
+                      description: LLM temperature for response generation
+                      default: 0.7
+                      minimum: 0.0
+                      maximum: 1.0
+                      example: 0.7
+                    stream:
+                      type: boolean
+                      description: Enable streaming response (recommended)
+                      default: true
+                      example: true
+                    max_tokens:
+                      type: integer
+                      description: Maximum response length in tokens
+                      default: 512
+                      minimum: 50
+                      maximum: 2048
+                      example: 512
+            examples:
+              basic:
+                summary: Basic query
+                value:
+                  session_id: "550e8400-e29b-41d4-a716-446655440000"
+                  query_text: "What is Python's main design philosophy?"
+              with_options:
+                summary: Query with custom parameters
+                value:
+                  session_id: "550e8400-e29b-41d4-a716-446655440000"
+                  query_text: "Explain the history of Python in detail"
+                  options:
+                    top_k: 5
+                    temperature: 0.5
+                    max_tokens: 1024
+      responses:
+        '200':
+          description: Query processed successfully (non-streaming)
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - query_id
+                  - session_id
+                  - query_text
+                  - response_text
+                  - created_at
+                properties:
+                  query_id:
+                    type: string
+                    format: uuid
+                    description: Unique identifier for this query
+                    example: "770e8400-e29b-41d4-a716-446655440002"
+                  session_id:
+                    type: string
+                    format: uuid
+                    description: RAG session queried
+                    example: "550e8400-e29b-41d4-a716-446655440000"
+                  query_text:
+                    type: string
+                    description: The submitted question
+                    example: "What is Python's main design philosophy?"
+                  response_text:
+                    type: string
+                    description: AI-generated answer
+                    example: "Python's main design philosophy emphasizes code readability and simplicity. The language follows the principle of 'There should be one-- and preferably only one --obvious way to do it,' as stated in the Zen of Python."
+                  retrieved_chunks:
+                    type: array
+                    description: Chunks used to generate the response
+                    items:
+                      type: object
+                      properties:
+                        chunk_id:
+                          type: string
+                          format: uuid
+                        position:
+                          type: integer
+                        similarity_score:
+                          type: number
+                          format: float
+                        preview:
+                          type: string
+                          description: First 100 characters of chunk
+                    example:
+                      - chunk_id: "880e8400-e29b-41d4-a716-446655440003"
+                        position: 5
+                        similarity_score: 0.87
+                        preview: "The Zen of Python is a collection of 19 guiding principles..."
+                      - chunk_id: "990e8400-e29b-41d4-a716-446655440004"
+                        position: 12
+                        similarity_score: 0.82
+                        preview: "Python's design philosophy emphasizes code readability..."
+                  created_at:
+                    type: string
+                    format: date-time
+                    description: Query timestamp
+                    example: "2025-11-02T11:15:30Z"
+                  latency_ms:
+                    type: object
+                    description: Performance metrics
+                    properties:
+                      retrieval:
+                        type: integer
+                        description: Time to retrieve chunks (ms)
+                        example: 120
+                      llm_inference:
+                        type: integer
+                        description: Time for LLM generation (ms)
+                        example: 1850
+                      total:
+                        type: integer
+                        description: End-to-end latency (ms)
+                        example: 2010
+              examples:
+                success:
+                  summary: Successful query response
+                  value:
+                    query_id: "770e8400-e29b-41d4-a716-446655440002"
+                    session_id: "550e8400-e29b-41d4-a716-446655440000"
+                    query_text: "What is Python's main design philosophy?"
+                    response_text: "Python's main design philosophy emphasizes code readability and simplicity. The language follows the principle of 'There should be one-- and preferably only one --obvious way to do it,' as stated in the Zen of Python."
+                    retrieved_chunks:
+                      - chunk_id: "880e8400-e29b-41d4-a716-446655440003"
+                        position: 5
+                        similarity_score: 0.87
+                        preview: "The Zen of Python is a collection of 19 guiding principles..."
+                      - chunk_id: "990e8400-e29b-41d4-a716-446655440004"
+                        position: 12
+                        similarity_score: 0.82
+                        preview: "Python's design philosophy emphasizes code readability..."
+                    created_at: "2025-11-02T11:15:30Z"
+                    latency_ms:
+                      retrieval: 120
+                      llm_inference: 1850
+                      total: 2010
+        '200 (streaming)':
+          description: Streaming response (Server-Sent Events)
+          content:
+            text/event-stream:
+              schema:
+                type: string
+                description: Server-Sent Events stream
+              examples:
+                stream:
+                  summary: Example streaming response
+                  value: |
+                    event: metadata
+                    data: {"query_id":"770e8400-e29b-41d4-a716-446655440002","session_id":"550e8400-e29b-41d4-a716-446655440000"}
+
+                    event: chunk
+                    data: {"content":"Python's"}
+
+                    event: chunk
+                    data: {"content":" main"}
+
+                    event: chunk
+                    data: {"content":" design"}
+
+                    event: done
+                    data: {"query_id":"770e8400-e29b-41d4-a716-446655440002","latency_ms":{"total":1980}}
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                invalid_query:
+                  summary: Query too short
+                  value:
+                    error: "VALIDATION_ERROR"
+                    message: "query_text must be at least 3 characters"
+                    details:
+                      query_text: "Hi"
+                      min_length: 3
+                missing_field:
+                  summary: Missing required field
+                  value:
+                    error: "VALIDATION_ERROR"
+                    message: "Missing required field: session_id"
+        '404':
+          description: Session not found or not ready
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                session_not_found:
+                  summary: Invalid session ID
+                  value:
+                    error: "SESSION_NOT_FOUND"
+                    message: "No RAG session found with the provided session_id"
+                    details:
+                      session_id: "550e8400-e29b-41d4-a716-446655440000"
+                session_not_ready:
+                  summary: Session still processing
+                  value:
+                    error: "SESSION_NOT_READY"
+                    message: "RAG session is not ready for queries"
+                    details:
+                      session_id: "550e8400-e29b-41d4-a716-446655440000"
+                      current_status: "processing"
+        '503':
+          description: LLM service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                llm_down:
+                  summary: Ollama service unavailable
+                  value:
+                    error: "LLM_UNAVAILABLE"
+                    message: "The LLM service is temporarily unavailable"
+                    details:
+                      service: "ollama"
+                      retry_after: 30
+        '504':
+          description: Query timeout
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                timeout:
+                  summary: Request exceeded timeout
+                  value:
+                    error: "TIMEOUT"
+                    message: "Query processing exceeded the maximum allowed time"
+                    details:
+                      timeout_seconds: 30
+
+  /chat/query/{query_id}:
+    get:
+      summary: Get query result by ID
+      description: |
+        Retrieve the result of a previously submitted query. Useful when
+        a query was submitted asynchronously or when retrieving chat history.
+      operationId: getQueryResult
+      tags:
+        - Chat Queries
+      parameters:
+        - name: query_id
+          in: path
+          required: true
+          description: UUID of the query
+          schema:
+            type: string
+            format: uuid
+          example: "770e8400-e29b-41d4-a716-446655440002"
+      responses:
+        '200':
+          description: Query result retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - query_id
+                  - session_id
+                  - query_text
+                  - response_text
+                  - created_at
+                properties:
+                  query_id:
+                    type: string
+                    format: uuid
+                  session_id:
+                    type: string
+                    format: uuid
+                  query_text:
+                    type: string
+                  response_text:
+                    type: string
+                  retrieved_chunks:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        chunk_id:
+                          type: string
+                          format: uuid
+                        position:
+                          type: integer
+                        similarity_score:
+                          type: number
+                  created_at:
+                    type: string
+                    format: date-time
+                  latency_ms:
+                    type: object
+                    properties:
+                      retrieval:
+                        type: integer
+                      llm_inference:
+                        type: integer
+                      total:
+                        type: integer
+              examples:
+                success:
+                  summary: Query result
+                  value:
+                    query_id: "770e8400-e29b-41d4-a716-446655440002"
+                    session_id: "550e8400-e29b-41d4-a716-446655440000"
+                    query_text: "What is Python's main design philosophy?"
+                    response_text: "Python's main design philosophy emphasizes code readability..."
+                    retrieved_chunks:
+                      - chunk_id: "880e8400-e29b-41d4-a716-446655440003"
+                        position: 5
+                        similarity_score: 0.87
+                    created_at: "2025-11-02T11:15:30Z"
+                    latency_ms:
+                      retrieval: 120
+                      llm_inference: 1850
+                      total: 2010
+        '404':
+          description: Query not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                not_found:
+                  summary: Invalid query ID
+                  value:
+                    error: "QUERY_NOT_FOUND"
+                    message: "No query found with the provided query_id"
+                    details:
+                      query_id: "770e8400-e29b-41d4-a716-446655440002"
+
+  /chat/{session_id}/history:
+    get:
+      summary: Get chat history for a session
+      description: |
+        Retrieve the complete conversation history for a RAG session,
+        including all user queries and assistant responses in chronological order.
+      operationId: getChatHistory
+      tags:
+        - Chat History
+      parameters:
+        - name: session_id
+          in: path
+          required: true
+          description: UUID of the RAG session
+          schema:
+            type: string
+            format: uuid
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        - name: limit
+          in: query
+          description: Maximum number of messages to return
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+          example: 20
+        - name: before
+          in: query
+          description: Return messages before this timestamp (for pagination)
+          required: false
+          schema:
+            type: string
+            format: date-time
+          example: "2025-11-02T12:00:00Z"
+      responses:
+        '200':
+          description: Chat history retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - session_id
+                  - messages
+                  - count
+                properties:
+                  session_id:
+                    type: string
+                    format: uuid
+                    description: RAG session identifier
+                    example: "550e8400-e29b-41d4-a716-446655440000"
+                  messages:
+                    type: array
+                    description: Conversation messages in chronological order
+                    items:
+                      type: object
+                      required:
+                        - message_id
+                        - role
+                        - content
+                        - created_at
+                      properties:
+                        message_id:
+                          type: string
+                          format: uuid
+                          description: Message identifier
+                        role:
+                          type: string
+                          enum: [user, assistant]
+                          description: Message sender
+                        content:
+                          type: string
+                          description: Message text
+                        created_at:
+                          type: string
+                          format: date-time
+                          description: Message timestamp
+                        query_id:
+                          type: string
+                          format: uuid
+                          description: Associated query ID (assistant messages only)
+                        metadata:
+                          type: object
+                          properties:
+                            token_count:
+                              type: integer
+                              description: Number of tokens (assistant only)
+                            streamed:
+                              type: boolean
+                              description: Whether response was streamed
+                  count:
+                    type: integer
+                    description: Number of messages in this response
+                    example: 8
+                  has_more:
+                    type: boolean
+                    description: Whether more messages exist before the first message
+                    example: false
+                  oldest_timestamp:
+                    type: string
+                    format: date-time
+                    description: Timestamp of oldest message (for pagination)
+                    example: "2025-11-02T11:00:00Z"
+              examples:
+                success:
+                  summary: Chat history with 4 messages
+                  value:
+                    session_id: "550e8400-e29b-41d4-a716-446655440000"
+                    messages:
+                      - message_id: "aa0e8400-e29b-41d4-a716-446655440010"
+                        role: "user"
+                        content: "What is Python?"
+                        created_at: "2025-11-02T11:00:00Z"
+                      - message_id: "bb0e8400-e29b-41d4-a716-446655440011"
+                        role: "assistant"
+                        content: "Python is a high-level, interpreted programming language..."
+                        created_at: "2025-11-02T11:00:02Z"
+                        query_id: "770e8400-e29b-41d4-a716-446655440002"
+                        metadata:
+                          token_count: 124
+                          streamed: true
+                      - message_id: "cc0e8400-e29b-41d4-a716-446655440012"
+                        role: "user"
+                        content: "When was it created?"
+                        created_at: "2025-11-02T11:01:00Z"
+                      - message_id: "dd0e8400-e29b-41d4-a716-446655440013"
+                        role: "assistant"
+                        content: "Python was created by Guido van Rossum and first released in 1991..."
+                        created_at: "2025-11-02T11:01:03Z"
+                        query_id: "880e8400-e29b-41d4-a716-446655440003"
+                        metadata:
+                          token_count: 98
+                          streamed: true
+                    count: 4
+                    has_more: false
+        '404':
+          description: Session not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                not_found:
+                  summary: Invalid session ID
+                  value:
+                    error: "SESSION_NOT_FOUND"
+                    message: "No RAG session found with the provided session_id"
+                    details:
+                      session_id: "550e8400-e29b-41d4-a716-446655440000"
+
+  /chat/{session_id}/history:
+    delete:
+      summary: Clear chat history for a session
+      description: |
+        Delete all conversation messages for a RAG session. This does not
+        delete the RAG session itself or the indexed content, only the
+        chat history.
+      operationId: clearChatHistory
+      tags:
+        - Chat History
+      parameters:
+        - name: session_id
+          in: path
+          required: true
+          description: UUID of the RAG session
+          schema:
+            type: string
+            format: uuid
+          example: "550e8400-e29b-41d4-a716-446655440000"
+      responses:
+        '200':
+          description: Chat history cleared successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - session_id
+                  - deleted_count
+                  - deleted_at
+                properties:
+                  session_id:
+                    type: string
+                    format: uuid
+                    description: RAG session identifier
+                    example: "550e8400-e29b-41d4-a716-446655440000"
+                  deleted_count:
+                    type: integer
+                    description: Number of messages deleted
+                    example: 8
+                  deleted_at:
+                    type: string
+                    format: date-time
+                    description: Deletion timestamp
+                    example: "2025-11-02T12:00:00Z"
+              examples:
+                success:
+                  summary: History cleared
+                  value:
+                    session_id: "550e8400-e29b-41d4-a716-446655440000"
+                    deleted_count: 8
+                    deleted_at: "2025-11-02T12:00:00Z"
+        '404':
+          description: Session not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+components:
+  schemas:
+    Error:
+      type: object
+      required:
+        - error
+        - message
+      properties:
+        error:
+          type: string
+          description: Error code identifier
+          example: "SESSION_NOT_FOUND"
+        message:
+          type: string
+          description: Human-readable error message
+          example: "No RAG session found with the provided session_id"
+        details:
+          type: object
+          description: Additional error context
+          additionalProperties: true
+        request_id:
+          type: string
+          description: Unique request identifier for troubleshooting
+          example: "req-987654321"
+
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: API key for authentication (Phase 2)
+
+security:
+  - ApiKeyAuth: []
+
+x-amazon-apigateway-integration:
+  type: aws_proxy
+  httpMethod: POST
+  uri: arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:ACCOUNT_ID:function:chat-query/invocations

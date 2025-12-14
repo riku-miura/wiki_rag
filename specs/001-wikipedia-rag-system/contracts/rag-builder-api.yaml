@@ -1,0 +1,575 @@
+openapi: 3.0.3
+info:
+  title: Wikipedia RAG Builder API
+  description: |
+    API for building and managing RAG (Retrieval-Augmented Generation) sessions
+    from Wikipedia articles. This API handles the ingestion, processing, and
+    indexing of Wikipedia content for later retrieval.
+  version: 1.0.0
+  contact:
+    name: Wikipedia RAG System
+    email: support@example.com
+
+servers:
+  - url: https://api.example.com/v1
+    description: Production API Gateway
+  - url: https://dev-api.example.com/v1
+    description: Development environment
+
+tags:
+  - name: RAG Sessions
+    description: Operations for building and managing RAG sessions
+
+paths:
+  /rag/build:
+    post:
+      summary: Build a new RAG session from Wikipedia URL
+      description: |
+        Initiates the RAG building process for a given Wikipedia article.
+        The system will fetch the article content, chunk it, generate embeddings,
+        and create a FAISS vector index. Returns a session ID that can be used
+        to query the indexed content.
+      operationId: buildRagSession
+      tags:
+        - RAG Sessions
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - source_url
+              properties:
+                source_url:
+                  type: string
+                  format: uri
+                  description: Full Wikipedia article URL
+                  example: "https://en.wikipedia.org/wiki/Python_(programming_language)"
+                  pattern: "^https?://(en|[a-z]{2})\\.wikipedia\\.org/wiki/.+$"
+                  maxLength: 2048
+                options:
+                  type: object
+                  description: Optional processing parameters
+                  properties:
+                    chunk_size:
+                      type: integer
+                      description: Target chunk size in characters
+                      default: 1000
+                      minimum: 500
+                      maximum: 2000
+                    chunk_overlap:
+                      type: integer
+                      description: Overlap between chunks in characters
+                      default: 200
+                      minimum: 0
+                      maximum: 500
+                    include_tables:
+                      type: boolean
+                      description: Whether to include table content (Phase 2 feature)
+                      default: false
+            examples:
+              basic:
+                summary: Basic request
+                value:
+                  source_url: "https://en.wikipedia.org/wiki/Python_(programming_language)"
+              with_options:
+                summary: Request with custom chunking
+                value:
+                  source_url: "https://en.wikipedia.org/wiki/Machine_learning"
+                  options:
+                    chunk_size: 1500
+                    chunk_overlap: 300
+      responses:
+        '202':
+          description: RAG build initiated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - session_id
+                  - status
+                  - created_at
+                  - source_url
+                properties:
+                  session_id:
+                    type: string
+                    format: uuid
+                    description: Unique identifier for the RAG session
+                    example: "550e8400-e29b-41d4-a716-446655440000"
+                  status:
+                    type: string
+                    enum: [processing]
+                    description: Initial status (always 'processing')
+                    example: "processing"
+                  created_at:
+                    type: string
+                    format: date-time
+                    description: Timestamp when session was created
+                    example: "2025-11-02T10:30:00Z"
+                  source_url:
+                    type: string
+                    format: uri
+                    description: The Wikipedia URL being processed
+                    example: "https://en.wikipedia.org/wiki/Python_(programming_language)"
+                  estimated_completion:
+                    type: string
+                    format: date-time
+                    description: Estimated completion time (based on article size)
+                    example: "2025-11-02T10:30:30Z"
+              examples:
+                success:
+                  summary: Successful initiation
+                  value:
+                    session_id: "550e8400-e29b-41d4-a716-446655440000"
+                    status: "processing"
+                    created_at: "2025-11-02T10:30:00Z"
+                    source_url: "https://en.wikipedia.org/wiki/Python_(programming_language)"
+                    estimated_completion: "2025-11-02T10:30:30Z"
+        '400':
+          description: Invalid request parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                invalid_url:
+                  summary: Invalid Wikipedia URL
+                  value:
+                    error: "INVALID_URL"
+                    message: "URL must be a valid Wikipedia article URL"
+                    details:
+                      source_url: "https://example.com/article"
+                      expected_pattern: "https://(en|[a-z]{2}).wikipedia.org/wiki/*"
+                malformed_request:
+                  summary: Missing required field
+                  value:
+                    error: "VALIDATION_ERROR"
+                    message: "Missing required field: source_url"
+        '404':
+          description: Wikipedia article not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                article_not_found:
+                  summary: Article does not exist
+                  value:
+                    error: "ARTICLE_NOT_FOUND"
+                    message: "Wikipedia article not found at the provided URL"
+                    details:
+                      source_url: "https://en.wikipedia.org/wiki/NonexistentPage"
+                      status_code: 404
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                rate_limit:
+                  summary: Too many requests
+                  value:
+                    error: "RATE_LIMIT_EXCEEDED"
+                    message: "You have exceeded the maximum number of RAG build requests"
+                    details:
+                      retry_after: 60
+                      limit: 10
+                      window: "1 hour"
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                server_error:
+                  summary: Processing failure
+                  value:
+                    error: "INTERNAL_ERROR"
+                    message: "An unexpected error occurred while processing the request"
+                    request_id: "req-123456789"
+
+  /rag/{session_id}/status:
+    get:
+      summary: Check RAG build status
+      description: |
+        Retrieves the current status of a RAG session. Use this to monitor
+        the progress of the RAG build process or to verify that a session
+        is ready for queries.
+      operationId: getRagSessionStatus
+      tags:
+        - RAG Sessions
+      parameters:
+        - name: session_id
+          in: path
+          required: true
+          description: UUID of the RAG session
+          schema:
+            type: string
+            format: uuid
+          example: "550e8400-e29b-41d4-a716-446655440000"
+      responses:
+        '200':
+          description: Session status retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - session_id
+                  - status
+                  - created_at
+                  - updated_at
+                  - source_url
+                properties:
+                  session_id:
+                    type: string
+                    format: uuid
+                    description: Session identifier
+                    example: "550e8400-e29b-41d4-a716-446655440000"
+                  status:
+                    type: string
+                    enum: [processing, ready, failed, expired]
+                    description: Current session status
+                    example: "ready"
+                  created_at:
+                    type: string
+                    format: date-time
+                    description: Session creation timestamp
+                    example: "2025-11-02T10:30:00Z"
+                  updated_at:
+                    type: string
+                    format: date-time
+                    description: Last status update timestamp
+                    example: "2025-11-02T10:30:25Z"
+                  source_url:
+                    type: string
+                    format: uri
+                    description: Source Wikipedia URL
+                    example: "https://en.wikipedia.org/wiki/Python_(programming_language)"
+                  chunk_count:
+                    type: integer
+                    description: Number of text chunks created (only when ready)
+                    example: 58
+                  embedding_dimension:
+                    type: integer
+                    description: Vector dimension (only when ready)
+                    example: 384
+                  metadata:
+                    type: object
+                    description: Additional session metadata
+                    properties:
+                      article_title:
+                        type: string
+                        example: "Python (programming language)"
+                      language:
+                        type: string
+                        example: "en"
+                      content_size:
+                        type: integer
+                        description: Original content size in bytes
+                        example: 52340
+                      processing_time_ms:
+                        type: integer
+                        description: Total processing time (only when ready/failed)
+                        example: 15240
+                      error_message:
+                        type: string
+                        description: Error details (only when failed)
+                        example: "Failed to fetch Wikipedia content: timeout"
+              examples:
+                processing:
+                  summary: Build in progress
+                  value:
+                    session_id: "550e8400-e29b-41d4-a716-446655440000"
+                    status: "processing"
+                    created_at: "2025-11-02T10:30:00Z"
+                    updated_at: "2025-11-02T10:30:15Z"
+                    source_url: "https://en.wikipedia.org/wiki/Python_(programming_language)"
+                ready:
+                  summary: Build completed
+                  value:
+                    session_id: "550e8400-e29b-41d4-a716-446655440000"
+                    status: "ready"
+                    created_at: "2025-11-02T10:30:00Z"
+                    updated_at: "2025-11-02T10:30:25Z"
+                    source_url: "https://en.wikipedia.org/wiki/Python_(programming_language)"
+                    chunk_count: 58
+                    embedding_dimension: 384
+                    metadata:
+                      article_title: "Python (programming language)"
+                      language: "en"
+                      content_size: 52340
+                      processing_time_ms: 15240
+                failed:
+                  summary: Build failed
+                  value:
+                    session_id: "550e8400-e29b-41d4-a716-446655440000"
+                    status: "failed"
+                    created_at: "2025-11-02T10:30:00Z"
+                    updated_at: "2025-11-02T10:30:10Z"
+                    source_url: "https://en.wikipedia.org/wiki/Python_(programming_language)"
+                    metadata:
+                      error_message: "Failed to generate embeddings: model not loaded"
+                      processing_time_ms: 8320
+        '404':
+          description: Session not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                not_found:
+                  summary: Invalid session ID
+                  value:
+                    error: "SESSION_NOT_FOUND"
+                    message: "No RAG session found with the provided session_id"
+                    details:
+                      session_id: "550e8400-e29b-41d4-a716-446655440000"
+
+  /rag/{session_id}:
+    delete:
+      summary: Delete a RAG session
+      description: |
+        Deletes a RAG session and all associated data, including the FAISS
+        index in S3, DynamoDB records, and query history. This action is
+        irreversible.
+      operationId: deleteRagSession
+      tags:
+        - RAG Sessions
+      parameters:
+        - name: session_id
+          in: path
+          required: true
+          description: UUID of the RAG session to delete
+          schema:
+            type: string
+            format: uuid
+          example: "550e8400-e29b-41d4-a716-446655440000"
+      responses:
+        '200':
+          description: Session deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - session_id
+                  - deleted
+                  - deleted_at
+                properties:
+                  session_id:
+                    type: string
+                    format: uuid
+                    description: Deleted session identifier
+                    example: "550e8400-e29b-41d4-a716-446655440000"
+                  deleted:
+                    type: boolean
+                    description: Deletion confirmation
+                    example: true
+                  deleted_at:
+                    type: string
+                    format: date-time
+                    description: Deletion timestamp
+                    example: "2025-11-02T11:00:00Z"
+                  deleted_resources:
+                    type: object
+                    description: Summary of deleted resources
+                    properties:
+                      s3_objects:
+                        type: integer
+                        description: Number of S3 objects deleted
+                        example: 1
+                      dynamodb_records:
+                        type: integer
+                        description: Number of DynamoDB records deleted
+                        example: 63
+                      queries_deleted:
+                        type: integer
+                        description: Number of queries deleted
+                        example: 5
+              examples:
+                success:
+                  summary: Successful deletion
+                  value:
+                    session_id: "550e8400-e29b-41d4-a716-446655440000"
+                    deleted: true
+                    deleted_at: "2025-11-02T11:00:00Z"
+                    deleted_resources:
+                      s3_objects: 1
+                      dynamodb_records: 63
+                      queries_deleted: 5
+        '404':
+          description: Session not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                not_found:
+                  summary: Session does not exist
+                  value:
+                    error: "SESSION_NOT_FOUND"
+                    message: "No RAG session found with the provided session_id"
+                    details:
+                      session_id: "550e8400-e29b-41d4-a716-446655440000"
+        '409':
+          description: Session cannot be deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                still_processing:
+                  summary: Delete not allowed during processing
+                  value:
+                    error: "DELETE_NOT_ALLOWED"
+                    message: "Cannot delete session while status is 'processing'"
+                    details:
+                      session_id: "550e8400-e29b-41d4-a716-446655440000"
+                      current_status: "processing"
+
+  /rag:
+    get:
+      summary: List all RAG sessions
+      description: |
+        Retrieves a paginated list of all RAG sessions, optionally filtered
+        by status. Useful for dashboard views and monitoring.
+      operationId: listRagSessions
+      tags:
+        - RAG Sessions
+      parameters:
+        - name: status
+          in: query
+          description: Filter by session status
+          required: false
+          schema:
+            type: string
+            enum: [processing, ready, failed, expired]
+          example: "ready"
+        - name: limit
+          in: query
+          description: Maximum number of sessions to return
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+          example: 20
+        - name: next_token
+          in: query
+          description: Pagination token from previous response
+          required: false
+          schema:
+            type: string
+          example: "eyJsYXN0X2V2YWx1YXRlZF9rZXkiOiAiLi4uIn0="
+      responses:
+        '200':
+          description: Sessions retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - sessions
+                  - count
+                properties:
+                  sessions:
+                    type: array
+                    description: Array of RAG sessions
+                    items:
+                      type: object
+                      properties:
+                        session_id:
+                          type: string
+                          format: uuid
+                        status:
+                          type: string
+                          enum: [processing, ready, failed, expired]
+                        created_at:
+                          type: string
+                          format: date-time
+                        source_url:
+                          type: string
+                          format: uri
+                        metadata:
+                          type: object
+                          properties:
+                            article_title:
+                              type: string
+                  count:
+                    type: integer
+                    description: Number of sessions in this response
+                    example: 15
+                  next_token:
+                    type: string
+                    description: Token for fetching next page (if more results exist)
+                    example: "eyJsYXN0X2V2YWx1YXRlZF9rZXkiOiAiLi4uIn0="
+              examples:
+                success:
+                  summary: List of sessions
+                  value:
+                    sessions:
+                      - session_id: "550e8400-e29b-41d4-a716-446655440000"
+                        status: "ready"
+                        created_at: "2025-11-02T10:30:00Z"
+                        source_url: "https://en.wikipedia.org/wiki/Python_(programming_language)"
+                        metadata:
+                          article_title: "Python (programming language)"
+                      - session_id: "660e8400-e29b-41d4-a716-446655440001"
+                        status: "processing"
+                        created_at: "2025-11-02T11:00:00Z"
+                        source_url: "https://en.wikipedia.org/wiki/Machine_learning"
+                        metadata:
+                          article_title: "Machine learning"
+                    count: 2
+        '400':
+          description: Invalid query parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+components:
+  schemas:
+    Error:
+      type: object
+      required:
+        - error
+        - message
+      properties:
+        error:
+          type: string
+          description: Error code identifier
+          example: "INVALID_URL"
+        message:
+          type: string
+          description: Human-readable error message
+          example: "URL must be a valid Wikipedia article URL"
+        details:
+          type: object
+          description: Additional error context
+          additionalProperties: true
+        request_id:
+          type: string
+          description: Unique request identifier for troubleshooting
+          example: "req-123456789"
+
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: API key for authentication (Phase 2)
+
+security:
+  - ApiKeyAuth: []
+
+x-amazon-apigateway-integration:
+  type: aws_proxy
+  httpMethod: POST
+  uri: arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:ACCOUNT_ID:function:rag-builder/invocations
