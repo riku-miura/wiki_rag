@@ -226,6 +226,9 @@ Phase 6: Polish & Cross-Cutting (runs after all user stories)
 - [ ] T069 [US3] Configure CloudFront distribution with S3 origin at /home/riku-miura/project/wiki_rag/infrastructure/stacks/frontend_stack.py
 - [ ] T070 [US3] Deploy frontend to S3 and invalidate CloudFront cache
 
+### Subdirectory Configuration (New)
+- [ ] T070b [US3] Configure Vite base path and CloudFront behavior for /projects/wiki_rag/ specific deployment
+
 ### Profile Page Integration (3 tasks)
 
 - [ ] T071 [US3] Create embedded chat widget wrapper at /home/riku-miura/project/wiki_rag/frontend/src/components/EmbeddedChat.svelte
