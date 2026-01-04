@@ -1,6 +1,6 @@
 <script>
     export let messages = [];
-    import { afterUpdate } from 'svelte';
+    import { afterUpdate } from "svelte";
 
     let container;
 
@@ -17,7 +17,10 @@
             <div class="bubble">
                 <div class="content">{msg.content}</div>
                 <div class="time">
-                    {new Date(msg.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                    {new Date(msg.timestamp).toLocaleTimeString([], {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                    })}
                 </div>
             </div>
         </div>
@@ -28,10 +31,10 @@
     .message-list {
         flex: 1;
         overflow-y: auto;
-        padding: 1rem;
+        padding: var(--space-4);
         display: flex;
         flex-direction: column;
-        gap: 1rem;
+        gap: var(--space-4);
     }
 
     .message {
@@ -46,7 +49,7 @@
     .message.assistant {
         justify-content: flex-start;
     }
-    
+
     .message.system {
         justify-content: center;
         opacity: 0.7;
@@ -55,27 +58,29 @@
 
     .bubble {
         max-width: 80%;
-        padding: 0.8rem 1.2rem;
-        border-radius: 1rem;
-        box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+        padding: var(--space-2) 1.2rem;
+        border-radius: var(--radius-2xl);
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+        color: var(--color-text);
     }
 
     .user .bubble {
-        background-color: #007bff;
-        color: white;
-        border-bottom-right-radius: 0.2rem;
+        background-color: var(--color-primary);
+        color: var(--color-background);
+        border-bottom-right-radius: var(--radius-sm);
     }
 
     .assistant .bubble {
-        background-color: #f1f3f5;
-        color: #333;
-        border-bottom-left-radius: 0.2rem;
+        background-color: var(--color-background);
+        border: 1px solid var(--color-border);
+        color: var(--color-text-secondary);
+        border-bottom-left-radius: var(--radius-sm);
     }
-    
+
     .system .bubble {
         background-color: transparent;
         box-shadow: none;
-        color: #666;
+        color: var(--color-text-muted);
         text-align: center;
     }
 

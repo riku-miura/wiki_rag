@@ -1,17 +1,17 @@
 <script>
-    export let status = 'idle'; // idle, building, ready, error
-    export let message = '';
+    export let status = "idle"; // idle, building, ready, error
+    export let message = "";
 </script>
 
-{#if status !== 'idle'}
+{#if status !== "idle"}
     <div class="status-indicator {status}">
         <div class="icon">
-            {#if status === 'building'}
-                🔄
-            {:else if status === 'ready'}
-                ✅
-            {:else if status === 'error'}
-                ❌
+            {#if status === "building"}
+                Processing...
+            {:else if status === "ready"}
+                Ready
+            {:else if status === "error"}
+                Error
             {/if}
         </div>
         <div class="text">
@@ -27,38 +27,49 @@
     .status-indicator {
         display: flex;
         align-items: center;
-        gap: 1rem;
-        padding: 1rem;
-        border-radius: 0.5rem;
-        margin: 1rem 0;
+        gap: var(--space-4);
+        padding: var(--space-4);
+        border-radius: var(--radius-lg);
+        margin: var(--space-4) 0;
+        border: 1px solid var(--color-border);
     }
 
     .building {
-        background-color: #e3f2fd;
-        color: #0d47a1;
+        background-color: var(--color-background-secondary);
+        color: var(--color-primary);
     }
 
     .ready {
-        background-color: #e8f5e9;
-        color: #1b5e20;
+        background-color: var(--color-background);
+        color: var(--color-text);
+        border-color: var(--color-primary);
     }
 
     .error {
-        background-color: #ffebee;
-        color: #b71c1c;
+        background-color: var(--color-background-secondary);
+        color: var(--color-text-muted);
+        border-color: var(--color-text-muted);
     }
 
     .icon {
-        font-size: 1.5rem;
+        font-size: 1.2rem;
+        font-weight: bold;
     }
-    
+
     .building .icon {
-        animation: spin 2s linear infinite;
+        animation: pulse 1.5s infinite;
         display: inline-block;
     }
 
-    @keyframes spin {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
+    @keyframes pulse {
+        0% {
+            opacity: 0.5;
+        }
+        50% {
+            opacity: 1;
+        }
+        100% {
+            opacity: 0.5;
+        }
     }
 </style>

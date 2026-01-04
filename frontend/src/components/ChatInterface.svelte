@@ -1,23 +1,23 @@
 <script>
-    import { chatStore } from '../stores/chat_store';
-    
-    let query = '';
-    
+    import { chatStore } from "../stores/chat_store";
+
+    let query = "";
+
     // Subscribe to store to check loading state
     let isLoading;
-    chatStore.subscribe(state => {
+    chatStore.subscribe((state) => {
         isLoading = state.isLoading;
     });
 
     function handleSubmit() {
         if (!query.trim() || isLoading) return;
-        
+
         chatStore.sendQuery(query);
-        query = '';
+        query = "";
     }
 
     function handleKeydown(e) {
-        if (e.key === 'Enter' && !e.shiftKey) {
+        if (e.key === "Enter" && !e.shiftKey) {
             e.preventDefault();
             handleSubmit();
         }
@@ -26,8 +26,8 @@
 
 <div class="chat-interface">
     <div class="input-container">
-        <textarea 
-            bind:value={query} 
+        <textarea
+            bind:value={query}
             on:keydown={handleKeydown}
             placeholder="Ask a question about the article..."
             disabled={isLoading}
@@ -44,51 +44,54 @@
 
 <style>
     .chat-interface {
-        padding: 1rem;
-        border-top: 1px solid #eee;
-        background: white;
+        padding: var(--space-4);
+        border-top: 1px solid var(--color-border);
+        background: var(--color-background);
     }
 
     .input-container {
         display: flex;
-        gap: 0.8rem;
+        gap: var(--space-2);
         align-items: flex-end;
     }
 
     textarea {
         flex: 1;
-        padding: 0.8rem;
-        border: 1px solid #ddd;
-        border-radius: 0.5rem;
+        padding: var(--space-2);
+        border: 1px solid var(--color-border);
+        border-radius: var(--radius-lg);
         resize: none;
         height: 60px;
         font-family: inherit;
+        background: var(--color-background);
+        color: var(--color-text);
     }
 
     textarea:focus {
         outline: none;
-        border-color: #007bff;
-        box-shadow: 0 0 0 2px rgba(0,123,255,0.1);
+        border-color: var(--color-focus);
+        box-shadow: 0 0 0 2px rgba(0, 102, 204, 0.1);
     }
 
     button {
-        padding: 0 1.5rem;
+        padding: 0 var(--space-6);
         height: 60px;
-        background-color: #007bff;
-        color: white;
+        background-color: var(--color-primary);
+        color: var(--color-background);
         border: none;
-        border-radius: 0.5rem;
+        border-radius: var(--radius-lg);
         font-weight: 600;
         cursor: pointer;
         transition: background 0.2s;
     }
 
     button:hover:not(:disabled) {
-        background-color: #0056b3;
+        background-color: var(--color-primary-hover);
     }
 
     button:disabled {
-        background-color: #ccc;
+        background-color: var(--color-border);
+        color: var(--color-text-muted);
         cursor: not-allowed;
     }
 </style>
