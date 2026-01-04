@@ -1,6 +1,6 @@
 import wikipediaapi
 from typing import Tuple
-from ..utils.validation import is_valid_wikipedia_url, extract_title_from_url
+from utils.validation import is_valid_wikipedia_url, extract_title_from_url
 
 class WikipediaFetcher:
     def __init__(self):

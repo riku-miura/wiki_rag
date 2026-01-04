@@ -44,3 +44,7 @@ class FrontendStack(Stack):
                 )
             }
         )
+
+        from aws_cdk import CfnOutput
+        CfnOutput(self, "CloudFrontURL", value=self.distribution.distribution_domain_name)
+        CfnOutput(self, "S3BucketName", value=self.frontend_bucket.bucket_name)

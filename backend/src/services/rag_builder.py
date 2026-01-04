@@ -4,14 +4,14 @@ import uuid
 from typing import List, Optional
 from datetime import datetime
 
-from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 
-from ..models.rag_session import RagSession, RagStatus, RagMetadata
-from ..models.text_chunk import TextChunk, ChunkMetadata
-from ..services.wikipedia_fetcher import WikipediaFetcher
-from ..services.embedding_service import EmbeddingService
-from ..services.vector_store import VectorStoreService
-from ..utils.s3_client import S3Client
+from models.rag_session import RagSession, RagStatus, RagMetadata
+from models.text_chunk import TextChunk, ChunkMetadata
+from services.wikipedia_fetcher import WikipediaFetcher
+from services.embedding_service import EmbeddingService
+from services.vector_store import VectorStoreService
+from utils.s3_client import S3Client
 
 class RagBuilderService:
     def __init__(self, rag_bucket_name: str):
