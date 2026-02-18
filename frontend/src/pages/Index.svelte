@@ -1,20 +1,20 @@
 <script>
-    import { chatStore } from '../stores/chat_store';
-    import WikipediaInput from '../components/WikipediaInput.svelte';
-    import StatusIndicator from '../components/StatusIndicator.svelte';
+    import { chatStore } from "../stores/chat_store";
+    import WikipediaInput from "../components/WikipediaInput.svelte";
+    import StatusIndicator from "../components/StatusIndicator.svelte";
 
-    let status = 'idle';
-    let errorMessage = '';
+    let status = "idle";
+    let errorMessage = "";
 
-    chatStore.subscribe(state => {
+    chatStore.subscribe((state) => {
         status = state.ragStatus;
-        errorMessage = state.error || '';
+        errorMessage = state.error || "";
         // Note: navigation to Chat page happens in App.svelte when sessionId is set
     });
 
     function handleUrlSubmit(event) {
         const { url } = event.detail;
-        chatStore.buildRag(url).catch(err => {
+        chatStore.buildRag(url).catch((err) => {
             console.error("Build failed", err);
         });
     }
@@ -22,13 +22,16 @@
 
 <div class="index-page">
     <header>
-        <h1>Wikipedia RAG 🤖</h1>
-        <p>Chat with any Wikipedia article!</p>
+        <h1>Wikipedia RAG</h1>
+        <p>Wikipediaの記事についてチャットで質問できます！</p>
     </header>
 
     <main>
-        <WikipediaInput on:submit={handleUrlSubmit} isLoading={status === 'building'} />
-        
+        <WikipediaInput
+            on:submit={handleUrlSubmit}
+            isLoading={status === "building"}
+        />
+
         <StatusIndicator {status} message={errorMessage} />
     </main>
 </div>

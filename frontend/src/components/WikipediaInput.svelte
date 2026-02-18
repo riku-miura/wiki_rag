@@ -3,33 +3,48 @@
 
     export let isLoading = false;
     let url = "";
+    let error = "";
 
     const dispatch = createEventDispatcher();
 
     function handleSubmit() {
         if (!url || isLoading) return;
+
+        if (!url.startsWith("https://ja.wikipedia.org/wiki/")) {
+            error =
+                "日本語のWikipedia URL (https://ja.wikipedia.org/wiki/...) を入力してください。";
+            return;
+        }
+
+        error = "";
         dispatch("submit", { url });
     }
 </script>
 
 <div class="wiki-input">
-    <h2>Build Knowledge Base</h2>
-    <p>Enter a Wikipedia URL to start chatting with it.</p>
+    <h2>ナレッジベース構築</h2>
+    <p>WikipediaのURLを入力して、チャットを開始しましょう。</p>
 
-    <div class="input-group">
-        <input
-            type="url"
-            bind:value={url}
-            placeholder="https://en.wikipedia.org/wiki/..."
-            disabled={isLoading}
-        />
-        <button on:click={handleSubmit} disabled={!url || isLoading}>
-            {#if isLoading}
-                Building...
-            {:else}
-                Start
-            {/if}
-        </button>
+    <div class="input-container">
+        <div class="input-group">
+            <input
+                type="url"
+                bind:value={url}
+                placeholder="https://ja.wikipedia.org/wiki/..."
+                disabled={isLoading}
+                on:input={() => (error = "")}
+            />
+            <button on:click={handleSubmit} disabled={!url || isLoading}>
+                {#if isLoading}
+                    処理中...
+                {:else}
+                    開始
+                {/if}
+            </button>
+        </div>
+        {#if error}
+            <div class="error-message">{error}</div>
+        {/if}
     </div>
 </div>
 
@@ -89,5 +104,12 @@
         background-color: var(--color-border);
         color: var(--color-text-muted);
         cursor: not-allowed;
+    }
+
+    .error-message {
+        color: #dc3545;
+        font-size: 0.9rem;
+        margin-top: var(--space-2);
+        text-align: left;
     }
 </style>

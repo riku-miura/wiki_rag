@@ -29,14 +29,14 @@
         <textarea
             bind:value={query}
             on:keydown={handleKeydown}
-            placeholder="Ask a question about the article..."
+            placeholder="記事について質問してください..."
             disabled={isLoading}
         ></textarea>
         <button on:click={handleSubmit} disabled={!query.trim() || isLoading}>
             {#if isLoading}
                 <span>...</span>
             {:else}
-                Send
+                送信
             {/if}
         </button>
     </div>

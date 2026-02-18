@@ -31,6 +31,9 @@ def handler(event, context):
     else:
         return {
             'statusCode': 404,
+            'headers': {
+                'Access-Control-Allow-Origin': '*'
+            },
             'body': json.dumps({'error': 'Not Found'})
         }
 
@@ -42,6 +45,9 @@ def handle_build_request(event):
         if not source_url:
             return {
                 'statusCode': 400,
+                'headers': {
+                    'Access-Control-Allow-Origin': '*'
+                },
                 'body': json.dumps({'error': 'Missing url parameter'})
             }
             
@@ -62,5 +68,8 @@ def handle_build_request(event):
         print(f"Error processing request: {str(e)}")
         return {
             'statusCode': 500,
+            'headers': {
+                'Access-Control-Allow-Origin': '*'
+            },
             'body': json.dumps({'error': str(e)})
         }

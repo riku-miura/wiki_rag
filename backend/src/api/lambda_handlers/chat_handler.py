@@ -33,6 +33,9 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     else:
         return {
             'statusCode': 404,
+            'headers': {
+                'Access-Control-Allow-Origin': '*'
+            },
             'body': json.dumps({'error': 'Not Found'})
         }
 
@@ -45,6 +48,9 @@ def handle_query_request(event: Dict[str, Any]) -> Dict[str, Any]:
         if not session_id or not query_text:
             return {
                 'statusCode': 400,
+                'headers': {
+                    'Access-Control-Allow-Origin': '*'
+                },
                 'body': json.dumps({'error': 'Missing session_id or query'})
             }
             
@@ -83,6 +89,9 @@ def handle_query_request(event: Dict[str, Any]) -> Dict[str, Any]:
         print(f"Error processing query: {str(e)}")
         return {
             'statusCode': 500,
+            'headers': {
+                'Access-Control-Allow-Origin': '*'
+            },
             'body': json.dumps({'error': str(e)})
         }
 
@@ -104,6 +113,9 @@ def handle_history_request(event: Dict[str, Any]) -> Dict[str, Any]:
         if not session_id:
              return {
                 'statusCode': 400,
+                'headers': {
+                    'Access-Control-Allow-Origin': '*'
+                },
                 'body': json.dumps({'error': 'Missing session_id'})
             }
 
@@ -126,5 +138,8 @@ def handle_history_request(event: Dict[str, Any]) -> Dict[str, Any]:
         print(f"Error retrieving history: {str(e)}")
         return {
             'statusCode': 500,
+            'headers': {
+                'Access-Control-Allow-Origin': '*'
+            },
             'body': json.dumps({'error': str(e)})
         }

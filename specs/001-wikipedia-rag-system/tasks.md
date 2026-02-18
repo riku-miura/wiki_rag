@@ -240,7 +240,7 @@ Phase 6: Polish & Cross-Cutting (runs after all user stories)
 ---
 
 ## Phase 6: Polish & Cross-Cutting Concerns (10 tasks)
-
+- [x] T074 [US3] Create design guidelines and unify design across projects (personal_page, wiki_rag, cache_sticky) at /home/riku-miura/.gemini/antigravity/brain/2cd5cff9-3a2c-4bad-ab2f-bba53877ce86/design_guidelines.md
 **Goal**: Production readiness, observability, and documentation
 **Dependencies**: Runs after all user stories are functional
 

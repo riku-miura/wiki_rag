@@ -1,10 +1,10 @@
 # AWS Deployment Info
 
 ## Status
-- [x] **Storage Stack**: Deployed
-- [x] **Compute Stack**: Deployed
-- [x] **Lambda Stack**: Deployed
-- [x] **Frontend Stack**: Deployed
+- [ ] **Storage Stack**: Destroyed (2026-02-18)
+- [ ] **Compute Stack**: Destroyed (2026-02-18)
+- [ ] **Lambda Stack**: Destroyed (2026-02-18)
+- [ ] **Frontend Stack**: Destroyed (2026-02-18)
 
 ## Outputs
 

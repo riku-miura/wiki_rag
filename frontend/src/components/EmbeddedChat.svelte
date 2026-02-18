@@ -30,7 +30,7 @@
     {#if isOpen}
         <div class="chat-window">
             <header>
-                <h3>Wiki RAG Chat</h3>
+                <h3>Wiki RAG チャット</h3>
                 <button on:click={toggleChat} class="close-btn">
                     <svg
                         width="24"
@@ -48,7 +48,7 @@
             <div class="messages-area">
                 {#if !sessionId && !initialUrl}
                     <div class="start-prompt">
-                        <p>Please configure a Wikipedia URL to start.</p>
+                        <p>開始するにはWikipediaのURLを設定してください。</p>
                     </div>
                 {:else}
                     <MessageList {messages} />
